@@ -4,7 +4,9 @@ Monitors a character's Encumbrance levels on the Roll20 5e Shaped Sheet.
 
 On Github:	https://github.com/blawson69
 Contact me: https://app.roll20.net/users/1781274/ben-l
-Like this script? Buy me a coffee: https://venmo.com/theRealBenLawson
+
+Like this script? Become a patron:
+    https://www.patreon.com/benscripts
 */
 
 var EncumbranceTracker = EncumbranceTracker || (function () {
@@ -12,8 +14,10 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
 
     //---- INFO ----//
 
-    var version = '0.1',
-    debugMode = true,
+    var version = '0.2',
+    debugMode = false,
+    MARKERS,
+    ALT_MARKERS = [{name:'red', tag: 'red', url:"#C91010"}, {name: 'blue', tag: 'blue', url: "#1076C9"}, {name: 'green', tag: 'green', url: "#2FC910"}, {name: 'brown', tag: 'brown', url: "#C97310"}, {name: 'purple', tag: 'purple', url: "#9510C9"}, {name: 'pink', tag: 'pink', url: "#EB75E1"}, {name: 'yellow', tag: 'yellow', url: "#E5EB75"}, {name: 'dead', tag: 'dead', url: "X"}],
     styles = {
         box:  'background-color: #fff; border: 1px solid #000; padding: 8px 10px; border-radius: 6px; margin-left: -40px; margin-right: 0px;',
         button: 'background-color: #000; border-width: 0px; border-radius: 5px; padding: 5px 8px; color: #fff; text-align: center;',
@@ -33,6 +37,8 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
         if (typeof state['EncumbranceTracker'].useVariant == 'undefined') state['EncumbranceTracker'].useVariant = false;
         if (typeof state['EncumbranceTracker'].usingVariantDefault == 'undefined') state['EncumbranceTracker'].usingVariantDefault = true;
         if (typeof state['EncumbranceTracker'].usingNonVariantDefault == 'undefined') state['EncumbranceTracker'].usingNonVariantDefault = true;
+        if (state['EncumbranceTracker'].encumberedCharacters[0] && typeof state['EncumbranceTracker'].encumberedCharacters[0] == 'string') updateEncumbrance(true);
+        MARKERS = JSON.parse(Campaign().get("token_markers"));
         log('--> EncumbranceTracker v' + version + ' <-- Initialized');
         if (debugMode) {
             var d = new Date();
@@ -95,9 +101,9 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
             message += '</div><div style="' + styles.buttonWrapper + '"><a style="' + styles.button + '" href="!heavy toggle-variant">Switch to Variant rules</a></div>';
         } else {
             if (state['EncumbranceTracker'].usingVariantDefault) {
-                message += '<h4>Variant Encumbrance</h4>Below are the current Encumbrance Levels based on the Variant rules from the PHB. You may edit them to your liking, but all calculations must be based on the character\'s Strength score. You can have up to 3 Encumbrance levels.<ol>';
+                message += '<h4>Variant Encumbrance</h4>Below are the current Encumbrance Levels based on the Variant rules from the PHB. You may edit them to your liking, but all calculations must be based on the character\'s Strength score. You can have up to 3 Encumbrance levels.<br><br><ol>';
             } else {
-                message += '<h4>Custom Encumbrance</h4>Below are your customized Encumbrance Levels. Edit them as you like, but all calculations must be based on the character\'s Strength score. You can have up to 3 Encumbrance levels.<ol>';
+                message += '<h4>Custom Encumbrance</h4>Below are your customized Encumbrance Levels. Edit them as you like, but all calculations must be based on the character\'s Strength score. You can have up to 3 Encumbrance levels.<br><br><ol>';
             }
             var count = 1;
             _.each(state['EncumbranceTracker'].encumbranceLevels, function (level) {
@@ -113,9 +119,12 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
             message += '<div style="' + styles.buttonWrapper + '"><a style="' + styles.button + '" href="!heavy toggle-variant">Turn off Variant rules</a></div>';
         }
 
-        message += '<hr /><h4>Encumbrance Marker</h4>' + getMarker(state['EncumbranceTracker'].encumbranceMarker, marker_style)
-        + '"' + state['EncumbranceTracker'].encumbranceMarker + '" is the current status marker being used to indicate Encumbrance.'
-        + '<div style="' + styles.buttonWrapper + '"><a style="' + styles.button + '" href="!heavy markers">Change Marker</a></div>';
+        var curr_marker = _.find(MARKERS, function (x) { return x.tag == state['EncumbranceTracker'].encumbranceMarker; });
+        if (typeof curr_marker == 'undefined') curr_marker = _.find(ALT_MARKERS, function (x) { return x.tag == state['EncumbranceTracker'].encumbranceMarker; });
+        message += '<hr /><h4>Encumbrance Marker</h4>' + getMarker(curr_marker.tag, marker_style)
+        + '"' + curr_marker.name + '" is the current status marker being used to indicate Encumbrance.'
+        + '<div style="' + styles.buttonWrapper + '"><a style="' + styles.button + '" href="!heavy markers" title="This may result in a very long list...">Choose Marker</a></div>'
+        + '<div style="text-align: center;"><a style="' + styles.textButton + '" href="!heavy set-marker &#63;&#123;Status Marker&#124;&#125;">Set manually</a></div>';
 
         showAdminDialog('Config Menu', message);
     },
@@ -160,7 +169,9 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
     },
 
     setMarker = function (msg, marker) {
-        var status_markers = ['blue', 'brown', 'green', 'pink', 'purple', 'red', 'yellow', 'all-for-one', 'angel-outfit', 'archery-target', 'arrowed', 'aura', 'back-pain', 'black-flag', 'bleeding-eye', 'bolt-shield', 'broken-heart', 'broken-shield', 'broken-skull', 'chained-heart', 'chemical-bolt', 'cobweb', 'dead', 'death-zone', 'drink-me', 'edge-crack', 'fishing-net', 'fist', 'fluffy-wing', 'flying-flag', 'frozen-orb', 'grab', 'grenade', 'half-haze', 'half-heart', 'interdiction', 'lightning-helix', 'ninja-mask', 'overdrive', 'padlock', 'pummeled', 'radioactive', 'rolling-bomb', 'screaming', 'sentry-gun', 'skull', 'sleepy', 'snail', 'spanner', 'stopwatch', 'strong', 'three-leaves', 'tread', 'trophy', 'white-tower'];
+        marker = marker.replace('=', '::');
+        var status_markers = _.pluck(MARKERS, 'tag');
+        _.each(_.pluck(ALT_MARKERS, 'tag'), function (x) { status_markers.push(x); });
         if (_.find(status_markers, function (tmp) {return tmp === marker; })) {
             var tokens = findObjs({ _type: 'graphic' });
             tokens = _.filter(tokens, function (token) { return token.get('status_' + state['EncumbranceTracker'].encumbranceMarker) != false && token.get('represents') != ''; });
@@ -174,66 +185,78 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
     },
 
     showMarkers = function () {
-        var status_markers = ['blue', 'brown', 'green', 'pink', 'purple', 'yellow', 'snail', 'half-haze', 'back-pain'];
         var message = '<table style="border: 0; width: 100%;" cellpadding="0" cellspacing="2">';
-        _.each(status_markers, function(marker) {
-            message += '<tr><td>' + getMarker(marker, 'margin-right: 10px;') + '</td><td style="white-space: nowrap; width: 100%;">' + marker + '</td>';
+        _.each(ALT_MARKERS, function (marker) {
+            message += '<tr><td>' + getMarker(marker.tag, 'margin-right: 10px;') + '</td><td style="white-space: nowrap; width: 100%; padding: 7px;">' + marker.name + '</td>';
             if (marker == state['EncumbranceTracker'].encumbranceMarker) {
-                message += '<td style="text-align: center;">Current</td>';
+                message += '<td style="text-align: center; padding: 7px;">Current</td>';
             } else {
-                message += '<td style="text-align: center; white-space: nowrap; padding: 7px;"><a style="' + styles.button + '" href="!heavy set-marker ' + marker + '">Set Marker</a></td>';
+                message += '<td style="text-align: center; white-space: nowrap; padding: 7px;"><a style="' + styles.button + '" href="!heavy set-marker ' + marker.tag + '">Set Marker</a></td>';
             }
             message += '</tr>';
         });
-        message += '<tr><td colspan="3" style="text-align: center; padding: 7px;"><a style="' + styles.button + '" href="!heavy config">&#9668; Back</a> &nbsp; <a style="'
-        + styles.button + '" href="!heavy set-marker &#63;&#123;Status Marker&#124;&#125;">Different Marker</a></td></tr>';
+
+        _.each(MARKERS, function (icon) {
+            message += '<tr><td>' + getMarker(icon.tag, 'margin-right: 10px;') + '</td><td style="white-space: nowrap; width: 100%; padding: 7px;">' + icon.name + '</td>';
+            if (icon.tag == state['EncumbranceTracker'].encumbranceMarker) {
+                message += '<td style="text-align: center; padding: 7px;">Current</td>';
+            } else {
+                message += '<td style="text-align: center; white-space: nowrap; padding: 7px;"><a style="' + styles.button + '" href="!heavy set-marker ' + icon.tag.replace('::','=') + '">Set Marker</a></td>';
+            }
+            message += '</tr>';
+        });
+
+        message += '<tr><td colspan="3" style="text-align: center; padding: 7px;"><a style="' + styles.button + '" href="!heavy config">&#9668; Back</a></td></tr>';
         message += '</table>';
-        showAdminDialog('Choose Encumbrance Marker', message);
+        showAdminDialog('Choose Exhaustion Marker', message);
     },
 
     getMarker = function (marker, style = '') {
-        let X = '';
-        let marker_style = 'width: 24px; height: 24px;';
-        var marker_pos = {red:"#C91010",  blue: "#1076C9",  green: "#2FC910",  brown: "#C97310",  purple: "#9510C9",  pink: "#EB75E1",  yellow: "#E5EB75",  dead: "X",  skull: 0, sleepy: 34, "half-heart": 68, "half-haze": 102, interdiction: 136, snail: 170, "lightning-helix": 204, spanner: 238, "chained-heart": 272, "chemical-bolt": 306, "death-zone": 340, "drink-me": 374, "edge-crack": 408, "ninja-mask": 442, stopwatch: 476, "fishing-net": 510, overdrive: 544, strong: 578, fist: 612, padlock: 646, "three-leaves": 680, "fluffy-wing": 714, pummeled: 748, tread: 782, arrowed: 816, aura: 850, "back-pain": 884, "black-flag": 918, "bleeding-eye": 952, "bolt-shield": 986, "broken-heart": 1020, cobweb: 1054, "broken-shield": 1088, "flying-flag": 1122, radioactive: 1156, trophy: 1190, "broken-skull": 1224, "frozen-orb": 1258, "rolling-bomb": 1292, "white-tower": 1326, grab: 1360, screaming: 1394,  grenade: 1428,  "sentry-gun": 1462,  "all-for-one": 1496,  "angel-outfit": 1530,  "archery-target": 1564};
+        var return_marker = '',
+        marker_style = 'width: 24px; height: 24px;' + style,
+        status_markers = _.pluck(MARKERS, 'tag'),
+        alt_marker = _.find(ALT_MARKERS, function (x) { return x.tag == marker; });
 
-        if (typeof marker_pos[marker] === 'undefined') return false;
-
-        if (Number.isInteger(marker_pos[marker])) {
-            marker_style += 'background-image: url(https://roll20.net/images/statussheet.png);'
-            + 'background-repeat: no-repeat; background-position: -' + marker_pos[marker] + 'px 0;';
-        } else if (marker_pos[marker] === 'X') {
-            marker_style += 'color: #C91010; font-size: 32px; font-weight: bold; text-align: center; padding-top: 5px; overflow: hidden;';
-            X = 'X';
+        if (_.find(status_markers, function (x) { return x == marker; })) {
+            var icon = _.find(MARKERS, function (x) { return x.tag == marker; });
+            return_marker = '<img src="' + icon.url + '" width="24" height="24" style="' + marker_style + '" />';
+        } else if (typeof alt_marker !== 'undefined') {
+            if (alt_marker.url === 'X') {
+                marker_style += 'color: #C91010; font-size: 30px; line-height: 24px; font-weight: bold; text-align: center; padding-top: 0px; overflow: hidden;';
+                return_marker = '<div style="' + marker_style + '">X</div>';
+            } else {
+                marker_style += 'background-color: ' + alt_marker.url + '; border: 1px solid #fff; border-radius: 50%;';
+                return_marker = '<div style="' + marker_style + '"></div>';
+            }
         } else {
-            marker_style += 'background-color: ' + marker_pos[marker] + '; border: 1px solid #fff; border-radius: 50%;';
+            return false;
         }
-
-        marker_style += style;
-
-        return '<div style="' + marker_style + '">' + X + '</div>';
+        return return_marker;
     },
 
     changeEncumbrance = function (char_id, silent = false) {
-        // Updates all PC character tokens and sends an explanation of the current Encumbrance level
+        // Updates a character's token(s) and sends an explanation of the current Encumbrance level
         var message = '', char = getObj('character', char_id);
         if (char && char.get('controlledby') != '') {
             var char_str = parseInt(getAttrByName(char_id, 'strength'));
             var weight_total = parseInt(getAttrByName(char_id, 'weight_total'));
-            var tokens = findObjs({ represents: char_id });
+            var tmp_level, tokens = findObjs({ represents: char_id });
 
             if (state['EncumbranceTracker'].useVariant == false) {
                 if (weight_total > char_str * 15) {
                     _.each(tokens, function(token) {
                         token.set('status_' + state['EncumbranceTracker'].encumbranceMarker, true);
                     });
-                    if (!_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; })) state['EncumbranceTracker'].encumberedCharacters.push(char_id);
-                    message = 'You are <b>Encumbered.</b> ' + state['EncumbranceTracker'].nonVariantCondition;
+                    if (!_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; })) {
+                        state['EncumbranceTracker'].encumberedCharacters.push({id: char_id, level: 1});
+                        message = 'You are <b>Encumbered.</b> ' + state['EncumbranceTracker'].nonVariantCondition;
+                    }
                 } else {
                     _.each(tokens, function(token) {
                         token.set('status_' + state['EncumbranceTracker'].encumbranceMarker, false);
                     });
-                    if (_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; })) {
-                        state['EncumbranceTracker'].encumberedCharacters = _.reject(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; });
+                    if (_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; })) {
+                        state['EncumbranceTracker'].encumberedCharacters = _.reject(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; });
                         message = 'You are no longer Encumbered.';
                     }
                 }
@@ -245,8 +268,8 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
                     _.each(tokens, function(token) {
                         token.set('status_' + state['EncumbranceTracker'].encumbranceMarker, false);
                     });
-                    if (_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; })) {
-                        state['EncumbranceTracker'].encumberedCharacters = _.reject(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; });
+                    if (_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; })) {
+                        state['EncumbranceTracker'].encumberedCharacters = _.reject(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; });
                         message = 'You are no longer Encumbered.';
                     }
                 } else {
@@ -254,13 +277,19 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
                     _.each(tokens, function(token) {
                         token.set('status_' + state['EncumbranceTracker'].encumbranceMarker, (char_level + 1) );
                     });
-                    if (!_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x == char_id; })) state['EncumbranceTracker'].encumberedCharacters.push(char_id);
-                    message = 'You are <b>' + level.name + ':</b> ' + level.desc;
+                    if (!_.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; })) {
+                        message = 'You are <b>' + level.name + ':</b> ' + level.desc;
+                    } else {
+                        var curr_level = _.find(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; });
+                        if (curr_level.level !== level.level) message = 'You are <b>' + level.name + ':</b> ' + level.desc;
+                        state['EncumbranceTracker'].encumberedCharacters = _.reject(state['EncumbranceTracker'].encumberedCharacters, function (x) { return x.id == char_id; });
+                    }
+                    state['EncumbranceTracker'].encumberedCharacters.push({id: char_id, level: char_level + 1});
                 }
             }
 
             // Skip dialog if intended to be silent or if already unencumbered
-            if (!silent && message.length > 0) showDialog('Encumbrance', message, char.get('name'), false);
+            if (!silent && message.length > 0) showDialog('Encumbrance', message, char.get('name'), true);
         } else {
             showAdminDialog('Error', 'Invalid character ID!');
         }
@@ -278,10 +307,12 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
     },
 
     showEncumbrance = function (msg) {
+        log(_.size(msg.selected) + ' tokens selected.')
         _.each(msg.selected, function (obj) {
             var message, char, token = getObj(obj._type, obj._id);
             if (token) char = getObj('character', token.get('represents'));
             if (char) {
+                log('found char...')
                 var char_str = parseInt(getAttrByName(char.get('id'), 'strength'));
                 var weight_total = parseInt(getAttrByName(char.get('id'), 'weight_total'));
 
@@ -302,8 +333,6 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
                     }
                 }
                 showDialog('Encumbrance', message, char.get('name'), true);
-            } else {
-                showDialog('Error', 'Invalid token!', char.get('name'), true);
             }
         });
     },
@@ -350,7 +379,7 @@ var EncumbranceTracker = EncumbranceTracker || (function () {
 
     handleTokenChange = function (obj, prev) {
         if (obj.get('represents') && obj.get('represents') != '' && obj.get('represents') != 'undefined') {
-            changeEncumbrance(obj.get('represents'), true);
+            _.delay(function () { changeEncumbrance(obj.get('represents'), true); }, 2000);
         }
     },
 
